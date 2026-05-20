@@ -169,53 +169,47 @@
     position:relative;
     background:rgba(5,13,36,.5);
     border:1px solid rgba(242,194,0,.25);
-    padding:14px;border-radius:6px;
+    padding:clamp(10px,2.5vw,18px);border-radius:6px;
     box-shadow:var(--sombra), inset 0 0 0 1px rgba(242,194,0,.06);
   }
   .pdf-frame-card::before,.pdf-frame-card::after{
     content:"";position:absolute;width:18px;height:18px;
-    border:1px solid var(--oro-2);opacity:.6;
+    border:1px solid var(--oro-2);opacity:.6;pointer-events:none;
   }
   .pdf-frame-card::before{top:6px;left:6px;border-right:0;border-bottom:0}
   .pdf-frame-card::after{bottom:6px;right:6px;border-left:0;border-top:0}
-  .pdf-frame{
-    width:100%;height:82vh;min-height:560px;
-    border:0;border-radius:3px;background:#fff;display:block;
+  .pdf-viewer{
+    display:flex;flex-direction:column;
+    gap:clamp(8px,2vw,14px);
+    min-height:300px;
   }
-  .mobile-pdf-card{
-    display:none;
-    background:linear-gradient(180deg, rgba(15,41,96,.85) 0%, rgba(10,31,74,.92) 100%);
-    border:1px solid rgba(242,194,0,.3);
-    border-radius:6px;padding:clamp(24px,5vw,34px);
-    text-align:center;position:relative;
-    box-shadow:var(--sombra);
+  .pdf-page{
+    display:block;width:100%;height:auto;
+    border-radius:3px;
+    box-shadow:0 6px 16px rgba(0,0,0,.4);
+    background:#fff;
   }
-  .mobile-pdf-card::before{
-    content:"";position:absolute;inset:8px;
-    border:1px solid rgba(242,194,0,.18);
-    border-radius:3px;pointer-events:none;
+  .pdf-loader{
+    display:flex;flex-direction:column;
+    align-items:center;justify-content:center;
+    padding:60px 20px;gap:18px;
+    color:var(--oro-1);
+    font-family:'Cinzel',serif;
+    font-size:.72rem;letter-spacing:.25em;text-transform:uppercase;
   }
-  .mobile-pdf-card .pdf-icon{
-    width:78px;height:78px;border-radius:50%;
-    background:linear-gradient(180deg,var(--oro-1),var(--oro-3));
-    color:var(--azul-deep);
-    display:grid;place-items:center;
-    margin:0 auto 18px;
-    box-shadow:0 10px 25px rgba(242,194,0,.35), inset 0 1px 0 rgba(255,255,255,.5);
+  .pdf-loader .ring{
+    width:46px;height:46px;
+    border:2px solid rgba(242,194,0,.18);
+    border-top-color:var(--oro-1);
+    border-radius:50%;
+    animation:spin 1s linear infinite;
   }
-  .mobile-pdf-card h3{
-    font-family:'Cormorant Garamond',serif;font-weight:600;
-    font-size:1.4rem;margin-bottom:8px;
-    background:linear-gradient(180deg,#f3d061,#d4a017);
-    -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .pdf-error{
+    text-align:center;padding:36px 20px;
+    color:var(--txt-soft);font-size:.9rem;
   }
-  .mobile-pdf-card p{
-    color:var(--txt-soft);margin-bottom:22px;font-size:.95rem;font-weight:300;
-  }
-  @media (max-width:760px){
-    .pdf-frame,.pdf-frame-card{display:none}
-    .mobile-pdf-card{display:block}
-  }
+  .pdf-error a{color:var(--oro-1);text-decoration:underline;text-underline-offset:3px}
   footer{
     text-align:center;padding:30px 16px 22px;
     font-family:'Cinzel',serif;font-size:.7rem;
@@ -260,21 +254,16 @@
 
 <div class="pdf-wrap">
   <div class="pdf-frame-card">
-    <iframe src="pdfs/graduacion-bach-ccff.pdf#view=FitH" class="pdf-frame" title="Ceremonia de Graduación 2º Bach y CCFF"></iframe>
-  </div>
-
-  <div class="mobile-pdf-card">
-    <div class="pdf-icon">
-      <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>
+    <div class="pdf-viewer" id="pdfViewer" data-src="pdfs/graduacion-bach-ccff.pdf">
+      <div class="pdf-loader" id="pdfLoader">
+        <div class="ring"></div>
+        <div>Cargando programa</div>
+      </div>
     </div>
-    <h3>Programa de la ceremonia</h3>
-    <p>Toca el botón para abrir el programa completo.</p>
-    <a href="pdfs/graduacion-bach-ccff.pdf" target="_blank" rel="noopener" class="btn primary">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6M15 3h6v6M10 14L21 3"/></svg>
-      Abrir programa
-    </a>
   </div>
 </div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 
 <footer>
   <span id="y"></span> · I.E.S. Antonio Gala
@@ -295,6 +284,57 @@
     }
   })();
   document.getElementById('y').textContent=new Date().getFullYear();
+
+  // PDF renderer using PDF.js
+  (async function(){
+    const container=document.getElementById('pdfViewer');
+    const loader=document.getElementById('pdfLoader');
+    const src=container.getAttribute('data-src');
+    try{
+      if(!window.pdfjsLib){throw new Error('PDF.js no disponible');}
+      pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+      const pdf=await pdfjsLib.getDocument(src).promise;
+      const dpr=Math.min(window.devicePixelRatio||1,2);
+      const containerWidth=container.clientWidth;
+      for(let i=1;i<=pdf.numPages;i++){
+        const page=await pdf.getPage(i);
+        const base=page.getViewport({scale:1});
+        const cssScale=containerWidth/base.width;
+        const viewport=page.getViewport({scale:cssScale*dpr});
+        const canvas=document.createElement('canvas');
+        canvas.className='pdf-page';
+        canvas.width=viewport.width;
+        canvas.height=viewport.height;
+        canvas.style.aspectRatio=(base.width/base.height).toString();
+        container.appendChild(canvas);
+        await page.render({canvasContext:canvas.getContext('2d',{alpha:false}),viewport}).promise;
+        if(i===1 && loader){loader.remove();}
+      }
+    }catch(err){
+      console.error(err);
+      if(loader)loader.remove();
+      const fb=document.createElement('div');
+      fb.className='pdf-error';
+      fb.innerHTML='No se pudo cargar el documento. <a href="'+src+'" target="_blank" rel="noopener">Ábrelo aquí</a>.';
+      container.appendChild(fb);
+    }
+  })();
+
+  let resizeTimer;
+  window.addEventListener('resize',()=>{
+    clearTimeout(resizeTimer);
+    resizeTimer=setTimeout(()=>{
+      const container=document.getElementById('pdfViewer');
+      if(!container)return;
+      const currentWidth=container.clientWidth;
+      if(!container.dataset.lastWidth){container.dataset.lastWidth=currentWidth;return;}
+      const last=parseFloat(container.dataset.lastWidth);
+      if(Math.abs(currentWidth-last)/last>0.2){
+        container.dataset.lastWidth=currentWidth;
+        location.reload();
+      }
+    },400);
+  });
 </script>
 </body>
 </html>
